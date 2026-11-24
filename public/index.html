@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rental Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a practical counter tool for a small rental shop, calm and quick to use
+   IDEA: the paper claim tag tied to each rented item, punched hole and due date on the stub
+   PICTURE: the live stack of tags, sorted by return date, is the picture
+   COLOUR and TYPE: white ground, ink, tag orange accent, deep teal support; Archivo titles, Inter text
+   LAYOUT: top bar with tabs, tag list full width, details in a side sheet (full screen on phones) */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#10171a);--ink:light-dark(#15212a,#e8eef0);--mute:light-dark(#5b6a73,#9fb0b8);
+--panel:light-dark(#f2f4f1,#18232a);--line:light-dark(#dde2df,#2a3840);--tag:light-dark(#fff8ef,#1d2a31);
+--acc:light-dark(#e8590c,#ff7a33);--teal:light-dark(#0b5563,#6cc0cf);--late:light-dark(#c92a2a,#ff6b6b);--soon:light-dark(#b35c00,#ffb054);--ok:light-dark(#2b6f3e,#7fd197)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:Archivo,Inter,sans-serif;line-height:1.1;margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,4vw,40px);font-weight:800}h2{font-size:22px;font-weight:800}h3{font-size:16px;font-weight:600;margin:18px 0 8px}
+.band{padding:clamp(18px,3vw,36px) max(5vw,16px)}
+.wrap{max-width:1100px;margin:0 auto}
+header{background:var(--teal);color:#fff;padding:18px max(5vw,16px) 0}
+header .wrap{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+header p{margin:4px 0 12px;opacity:.85;font-size:14px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{color:#fff;text-decoration:none;padding:10px 16px;border-radius:10px 10px 0 0;font-weight:600;font-size:15px;min-height:44px;display:flex;align-items:center}
+nav a.on{background:var(--bg);color:var(--ink)}
+nav a:focus-visible{outline:3px solid var(--acc)}
+.view{display:none}.view.on{display:block}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.stat{background:var(--panel);border-radius:12px;padding:12px 14px}
+.stat b{display:block;font:800 clamp(26px,4vw,34px)/1 Archivo,sans-serif}
+.stat span{font-size:13px;color:var(--mute)}
+.stat.late b{color:var(--late)}.stat.soon b{color:var(--soon)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:none;color:var(--ink);min-height:40px;padding:0 14px}
+.seg button.on{background:var(--ink);color:var(--bg)}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+textarea{min-height:80px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid color-mix(in srgb,var(--acc) 60%,transparent);outline-offset:1px}
+.bar input{flex:1 1 200px;width:auto}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;min-height:44px;padding:0 16px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.sm{min-height:36px;padding:0 12px;font-size:14px}
+button.danger{color:var(--late);border-color:color-mix(in srgb,var(--late) 40%,transparent)}
+button:disabled{opacity:.55;cursor:wait}
+#list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px}
+.tag{display:flex;align-items:stretch;text-align:left;padding:0;background:var(--tag);border:1px solid var(--line);border-radius:12px;min-height:96px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 6px 14px -10px rgba(0,0,0,.35);transition:transform .15s}
+.tag:hover{transform:translateY(-2px)}
+@media (prefers-reduced-motion:reduce){.tag{transition:none}.tag:hover{transform:none}}
+.stub{width:78px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--teal);color:#fff;border-right:2px dashed color-mix(in srgb,var(--bg) 70%,transparent);position:relative;padding-top:14px}
+.tag.late .stub{background:var(--late)}.tag.today .stub,.tag.soon .stub{background:var(--acc)}.tag.done .stub{background:var(--mute)}
+.hole{position:absolute;top:8px;width:12px;height:12px;border-radius:50%;background:var(--bg);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+.stub b{font:800 30px/1 Archivo,sans-serif}.stub span{font-size:13px;text-transform:uppercase;letter-spacing:.02em}
+.tag .body{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:3px;font-weight:400}
+.row1{display:flex;gap:8px;align-items:start;justify-content:space-between}
+.row1 strong{font-size:17px;line-height:1.25}
+.meta{color:var(--mute);font-size:14px}
+.thumb{width:72px;object-fit:cover;flex:none}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;background:var(--panel)}
+.chip.late{background:var(--late);color:#fff}.chip.today,.chip.soon{background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--soon)}.chip.ok{color:var(--ok)}
+.empty{grid-column:1/-1;padding:40px 20px;text-align:center;color:var(--mute);background:var(--panel);border-radius:12px}
+form.card,.card{background:var(--panel);border-radius:14px;padding:clamp(16px,3vw,26px);max-width:760px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid .full{grid-column:1/-1}
+label{display:block;font-size:14px;font-weight:600}
+label input,label select,label textarea{margin-top:4px;font-weight:400}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.ck{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 12px;min-height:44px;font-weight:500}
+.ck input{width:18px;height:18px;min-height:0;margin:0;accent-color:var(--acc)}
+.inline{display:flex;gap:8px;align-items:end}.inline>*:first-child{flex:1}
+.rems{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}
+.rems li{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px;flex-wrap:wrap}
+.rems li span{flex:1}.rems .when{font-weight:600;white-space:nowrap;flex:none}
+.rems .sent{color:var(--ok);font-size:13px}.rems .past{color:var(--mute);font-size:13px}
+.note{font-size:13px;color:var(--mute);margin:6px 0 0}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin:8px 0}
+.photos button{padding:0;border:0;min-height:0;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--line)}
+.photos img{width:100%;height:100%;object-fit:cover;display:block}
+.file{display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--teal);color:var(--teal);border-radius:10px;padding:0 14px;min-height:44px;cursor:pointer;font-weight:600;font-size:15px}
+.file input{position:absolute;opacity:0;width:1px;height:1px;min-height:0}
+.file:focus-within{outline:3px solid color-mix(in srgb,var(--acc) 60%,transparent)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+#scrim{position:fixed;inset:0;background:rgba(5,12,16,.45);display:none;z-index:10}
+#sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--bg);z-index:11;overflow-y:auto;transform:translateX(105%);transition:transform .2s;padding:0 0 40px;box-shadow:-10px 0 30px rgba(0,0,0,.25)}
+@media (prefers-reduced-motion:reduce){#sheet{transition:none}}
+body.open #scrim{display:block}body.open #sheet{transform:none}
+.sh-head{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;gap:10px;align-items:center;z-index:1}
+.sh-head h2{flex:1}
+.sh-body{padding:4px 18px}
+dl{display:grid;grid-template-columns:8em minmax(0,1fr);gap:4px 12px;margin:0}
+dt{color:var(--mute);font-size:14px}dd{margin:0;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse;background:var(--bg);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-size:15px}
+th{font-size:13px;color:var(--mute);font-weight:600}
+td.num{text-align:right;white-space:nowrap}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20;display:none;align-items:center;justify-content:center;padding:20px}
+#lb.on{display:flex}#lb img{max-width:100%;max-height:100%;border-radius:8px}
+#lb button{position:absolute;top:14px;right:14px;background:#fff;color:#000}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:30;display:none;max-width:90vw}
+#conn{font-size:14px;color:var(--mute);margin:0 0 12px}
+@media(max-width:600px){.grid{grid-template-columns:minmax(0,1fr)}.stats{gap:6px}.stat{padding:10px}dl{grid-template-columns:minmax(0,1fr)}dt{margin-top:6px}
+table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 12px;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}}
+#login{display:none;margin:0 auto}
+body.out #login{display:block}
+body.out .view,body.out #nav{display:none!important}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<header><div class="wrap">
+  <div><h1>Rental Desk</h1><p>Who has what, when it comes back, and the reminder emails before it does.</p></div>
+  <nav id="nav"><a href="#rentals" data-v="rentals">Out now</a><a href="#new" data-v="new">New rental</a><a href="#customers" data-v="customers">Customers</a><a href="#setup" data-v="setup">Email setup</a><a href="#rentals" id="signOut" title="Sign out">Sign out</a></nav>
+</div></header>
+
+<main class="band"><div class="wrap">
+<p id="conn">Connecting to your saved data…</p>
+<form class="card" id="login" autocomplete="on">
+  <h2>Sign in</h2>
+  <p class="note">Use the email and password you created in Supabase.</p>
+  <div class="grid" style="margin-top:12px">
+    <label class="full">Email<input name="email" type="email" autocomplete="username" required></label>
+    <label class="full">Password<input name="password" type="password" autocomplete="current-password" required></label>
+  </div>
+  <div class="actions"><button class="pri">Sign in</button></div>
+  <p class="note" id="loginMsg"></p>
+</form>
+
+<section class="view" id="v-rentals">
+  <div class="stats">
+    <div class="stat late"><b id="sLate">0</b><span>Overdue</span></div>
+    <div class="stat soon"><b id="sSoon">0</b><span>Due in the next 7 days</span></div>
+    <div class="stat"><b id="sOut">0</b><span>Rented out now</span></div>
+  </div>
+  <div class="bar">
+    <div class="seg" id="seg"><button data-f="active" class="on">Out now</button><button data-f="returned">Returned</button><button data-f="all">All</button></div>
+    <input id="q" type="search" placeholder="Search item, customer or phone" aria-label="Search rentals">
+  </div>
+  <div id="list"></div>
+</section>
+
+<section class="view" id="v-new">
+  <form class="card" id="fNew" autocomplete="off">
+    <h2>New rental</h2>
+    <h3>Customer</h3>
+    <label>Choose customer<select name="cust" id="custSel"><option value="new">+ New customer</option></select></label>
+    <div class="grid" id="newCust" style="margin-top:12px">
+      <label>Name *<input name="cName"></label>
+      <label>Phone<input name="cPhone" type="tel"></label>
+      <label>Email<input name="cEmail" type="email"></label>
+      <label>ID or licence number<input name="cId"></label>
+      <label class="full">Address<input name="cAddress"></label>
+    </div>
+    <h3>Item</h3>
+    <div class="grid">
+      <label class="full">Item name *<input name="itemName" placeholder="e.g. Folding wheelchair"></label>
+      <label>Tag or serial no.<input name="itemTag"></label>
+      <label>Quantity<input name="qty" type="number" min="1" value="1"></label>
+      <label>Rental price<input name="price" type="number" min="0" step="0.01"></label>
+      <label>Deposit<input name="deposit" type="number" min="0" step="0.01"></label>
+      <label class="full">Condition and notes<textarea name="itemDesc" placeholder="Scratches, accessories included, etc."></textarea></label>
+    </div>
+    <h3>Dates</h3>
+    <div class="grid">
+      <label>Start date<input name="startDate" type="date"></label>
+      <label>Return date *<input name="endDate" type="date"></label>
+    </div>
+    <h3>Reminder emails</h3>
+    <div class="checks" id="rdChecks"></div>
+    <div class="inline" style="margin-top:10px"><label>Add your own reminder date<input type="date" id="cusDate"></label><button type="button" id="addCus">Add</button></div>
+    <ul class="rems" id="remPreview"></ul>
+    <label class="ck" style="margin-top:6px"><input type="checkbox" name="emailCust"> Also email the customer (needs their email)</label>
+    <h3>Photos before handover</h3>
+    <label class="file"><input type="file" accept="image/*" multiple id="beforeIn">Add photos</label>
+    <div class="photos" id="beforePrev"></div>
+    <div class="actions"><button class="pri" id="saveNew">Save rental</button><button type="reset">Clear</button></div>
+  </form>
+</section>
+
+<section class="view" id="v-customers">
+  <div class="bar"><input id="cq" type="search" placeholder="Search customers" aria-label="Search customers"><button class="pri" id="addCust">Add customer</button></div>
+  <div id="custTable"></div>
+</section>
+
+<section class="view" id="v-setup">
+  <form class="card" id="fSet">
+    <h2>Email setup</h2>
+    <p>Every morning (about 9 AM Pacific time) the app checks your rentals and emails any reminder that is due today. Each reminder is sent once and then shows as sent on the rental.</p>
+    <label>Send reminders to (your email)<input name="ownerEmail" type="email" placeholder="Leave blank to use your Gmail address"></label>
+    <h3>Default reminders for new rentals</h3>
+    <div class="checks" id="defChecks"></div>
+    <p class="note">You can still change reminders on each rental, and add your own dates.</p>
+    <div class="actions"><button class="pri">Save</button></div>
+  </form>
+</section>
+</div></main>
+
+<div id="scrim"></div>
+<aside id="sheet" aria-label="Details"></aside>
+<div id="lb"><img alt=""><button type="button">Close</button></div>
+<div id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
